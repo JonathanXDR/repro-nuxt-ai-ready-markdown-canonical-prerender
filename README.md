@@ -64,7 +64,7 @@ cat .output/public/index.html   # full HTML document is restored
   Vercel byte for byte.
 - To run in StackBlitz WebContainer, which cannot load native addons, the repo
   removes all native dependencies. `aiReady.database.type` is `d1` so the build
-  needs no native `better-sqlite3`, and a package.json override aliases the
+  needs no native `better-sqlite3`, and a Nitro build alias maps the
   native `mdream` markdown engine to its pure JS twin `@mdream/js`. Neither
   change touches the bug, which lives in the markdown content negotiation. The
   default `sqlite` driver and the native `mdream` reproduce the identical stub.

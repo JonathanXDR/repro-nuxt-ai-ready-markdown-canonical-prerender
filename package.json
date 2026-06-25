@@ -15,8 +15,5 @@
     "nuxt": "4.4.8",
     "nuxt-ai-ready": "1.5.0",
     "vue": "3.5.38"
-  },
-  "overrides": {
-    "mdream": "npm:@mdream/js@1.4.1"
   }
 }

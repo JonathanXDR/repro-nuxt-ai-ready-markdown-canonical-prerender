@@ -14,6 +14,10 @@ export default defineNuxtConfig({
   // the markdown conversion.
   aiReady: { database: { type: 'd1' } },
   nitro: {
+    // Build-time alias of the native 'mdream' engine to its pure JS twin, so the
+    // server bundle never loads a native addon. This is resolved by the bundler
+    // regardless of the package manager, unlike a package.json override.
+    alias: { mdream: '@mdream/js' },
     prerender: {
       crawlLinks: true,
       routes: ['/', '/about/'],

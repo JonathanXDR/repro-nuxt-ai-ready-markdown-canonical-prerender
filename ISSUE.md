@@ -38,7 +38,7 @@ A 95 byte stub is produced instead of the page:
 
 The repo stamps an AI bot User-Agent on the prerender request to trigger the
 negotiation deterministically. Removing that plugin, or running
-`AI_READY_REPRO=document bun run generate`, restores the full HTML page, which
+`AI_READY_REPRO=document npm run generate`, restores the full HTML page, which
 confirms the negotiation gate is the cause.
 
 ## 🌈 Expected behavior
@@ -71,7 +71,7 @@ variant under the canonical URL.
 
 To run in StackBlitz WebContainer (no native addons), the repo removes all
 native dependencies. It sets `aiReady.database.type` to `d1` to avoid native
-`better-sqlite3`, and a package.json override aliases the native `mdream` engine
+`better-sqlite3`, and a Nitro build alias maps the native `mdream` engine
 to its pure JS twin `@mdream/js`. Neither touches the bug, which is in the
 markdown negotiation. The default `sqlite` driver and native `mdream` reproduce
 the identical stub.
