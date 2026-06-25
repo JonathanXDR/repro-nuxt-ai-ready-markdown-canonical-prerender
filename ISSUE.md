@@ -20,11 +20,13 @@ needs neither i18n nor Vercel.
 
 ## 🛠️ To reproduce
 
-Reproduction: https://github.com/JonathanXDR/repro-nuxt-ai-ready-markdown-canonical-prerender
+StackBlitz (one click, runs in the browser): https://stackblitz.com/github/JonathanXDR/repro-nuxt-ai-ready-markdown-canonical-prerender
+
+Or locally:
 
 ```sh
-bun install
-bun run generate
+npm install
+npm run generate
 cat .output/public/index.html
 ```
 
@@ -67,10 +69,12 @@ out. A runtime aggravator: Vercel's CDN does not cache key on
 `Vary: Accept, Sec-Fetch-Dest`, so one AI crawler hit can cache the markdown
 variant under the canonical URL.
 
-The reproduction runs locally only. A hosted StackBlitz repro is not possible
-because the prerender loads mdream's native napi binding, and mdream 1.4.1 ships
-no installable wasm fallback (`@mdream/rust-wasm32-wasi` is unpublished), so a
-WebContainer aborts with "Cannot find native binding".
+To run in StackBlitz WebContainer (no native addons), the repo removes all
+native dependencies. It sets `aiReady.database.type` to `d1` to avoid native
+`better-sqlite3`, and a package.json override aliases the native `mdream` engine
+to its pure JS twin `@mdream/js`. Neither touches the bug, which is in the
+markdown negotiation. The default `sqlite` driver and native `mdream` reproduce
+the identical stub.
 
 Not duplicates: #22 (inverse, markdown not served), #14 (`.md` 404), and
 harlan-zw/mdream#40 (runtime negotiation only).
@@ -79,15 +83,15 @@ harlan-zw/mdream#40 (runtime negotiation only).
 
 |                      |                                                   |
 | -------------------- | ------------------------------------------------- |
-| **Operating system** | `macOS 25.5.0`                                     |
-| **CPU**              | `Apple M4 Pro (14 cores)`                          |
-| **Node.js version**  | `v26.3.1`                                          |
-| **nuxt/cli version** | `3.36.0`                                           |
-| **Package manager**  | `bun@1.3.14`                                       |
-| **Nuxt version**     | `4.4.8`                                            |
-| **Nitro version**    | `2.13.4`                                           |
-| **Builder**          | `vite@7.3.6`                                       |
-| **Config**           | `compatibilityDate`, `modules`, `nitro`, `site`   |
-| **Modules**          | `nuxt-ai-ready@1.5.0`                              |
+| **Operating system** | `macOS 25.5.0`                                             |
+| **CPU**              | `Apple M4 Pro (14 cores)`                                  |
+| **Node.js version**  | `v24.18.0`                                                 |
+| **nuxt/cli version** | `3.36.0`                                                   |
+| **Package manager**  | `npm@11.17.0`                                              |
+| **Nuxt version**     | `4.4.8`                                                    |
+| **Nitro version**    | `2.13.4`                                                   |
+| **Builder**          | `vite@7.3.6`                                               |
+| **Config**           | `aiReady`, `compatibilityDate`, `modules`, `nitro`, `site` |
+| **Modules**          | `nuxt-ai-ready@1.5.0`                                       |
 
 </details>

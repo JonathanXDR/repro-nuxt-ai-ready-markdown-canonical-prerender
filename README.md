@@ -15,20 +15,23 @@ prerendered pages.
 
 See [ISSUE.md](./ISSUE.md) for the full report with code citations.
 
-## Steps
+## Reproduce on StackBlitz
+
+https://stackblitz.com/github/JonathanXDR/repro-nuxt-ai-ready-markdown-canonical-prerender
+
+It installs, runs `nuxt generate`, and prints `.output/public/index.html` in the
+terminal. That file is a 95 byte meta refresh stub instead of the page. You can
+also open it from the file tree.
+
+## Reproduce locally
 
 ```sh
-bun install
-bun run generate
-```
-
-Then inspect the prerendered canonical HTML:
-
-```sh
+npm install
+npm run generate
 cat .output/public/index.html
 ```
 
-Observed (the bug), a 95 byte stub:
+Observed, a 95 byte stub:
 
 ```html
 <!DOCTYPE html><html><head><meta http-equiv="refresh" content="0; url=/index.md"></head></html>
@@ -45,7 +48,7 @@ The trigger is the content negotiation gate. Re run with the workaround flag,
 which forces an HTML document request on those same prerender requests:
 
 ```sh
-AI_READY_REPRO=document bun run generate
+AI_READY_REPRO=document npm run generate
 cat .output/public/index.html   # full HTML document is restored
 ```
 
@@ -59,15 +62,13 @@ cat .output/public/index.html   # full HTML document is restored
   Vercel build was not captured. The simulated User-Agent is a faithful stand in
   for the production trigger, and the resulting stub matches the artifact seen on
   Vercel byte for byte.
-- This runs locally only. A hosted StackBlitz repro is not possible because
-  nuxt-ai-ready's prerender loads mdream's native napi binding, and mdream 1.4.1
-  ships no installable wasm fallback (`@mdream/rust-wasm32-wasi` is unpublished
-  on npm), so StackBlitz WebContainer aborts the build with "Cannot find native
-  binding".
+- To run in StackBlitz WebContainer, which cannot load native addons, the repo
+  removes all native dependencies. `aiReady.database.type` is `d1` so the build
+  needs no native `better-sqlite3`, and a package.json override aliases the
+  native `mdream` markdown engine to its pure JS twin `@mdream/js`. Neither
+  change touches the bug, which lives in the markdown content negotiation. The
+  default `sqlite` driver and the native `mdream` reproduce the identical stub.
 
 ## Environment
 
-- nuxt 4.4.8, nitropack 2.13.4, h3 1.15.11
-- nuxt-ai-ready 1.5.0
-- @nuxtjs/robots 6.1.1, @nuxtjs/sitemap 8.2.1
-- better-sqlite3 12.10.0
+See the `nuxi info` block in [ISSUE.md](./ISSUE.md).
