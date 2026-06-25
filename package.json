@@ -6,8 +6,10 @@
     "build": "nuxt build",
     "dev": "nuxt dev",
     "generate": "nuxt generate",
-    "repro": "nuxt generate && echo '\\n===== .output/public/index.html (should be the full page) =====' && cat .output/public/index.html",
     "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "better-sqlite3": "12.10.0"
   },
   "devDependencies": {
     "@nuxtjs/robots": "6.1.1",
