@@ -20,8 +20,6 @@ The markdown content negotiation runs on every page route. During prerender the
 crawler request is negotiated to markdown, the middleware 307 redirects the
 route to its `.md` twin, and Nitro stores that redirect body as `index.html`.
 
-Affects 1.5.0 and 1.4.0, and reproduces without i18n or Vercel.
-
 ## 🛠️ To reproduce
 
 https://stackblitz.com/github/JonathanXDR/repro-nuxt-ai-ready-markdown-canonical-prerender
