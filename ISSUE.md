@@ -1,24 +1,35 @@
 <!--
-Title (the form prepends "fix: "): prerender bakes the markdown representation into the canonical HTML
+Title: Canonical routes are content negotiated to Markdown, which CDNs cache and serve to every visitor
 Template: .github/ISSUE_TEMPLATE/02-bug-report.yml, label: bug
 -->
 
 ## 🐛 The bug
 
-On a prerendered Nuxt site, nuxt-ai-ready can overwrite a page's prerendered
-`<route>/index.html` with a meta refresh stub that points at the `.md` twin, so
-the canonical file is no longer the page:
+nuxt-ai-ready content negotiates a Markdown representation on every canonical
+page route, not only on the explicit `.md` URLs. When a request is classified as
+Markdown preferring (an AI bot User-Agent, or `Accept: text/plain` or
+`text/markdown`), the middleware answers the canonical route with a 307 redirect
+to its `.md` twin and sets `Vary: Accept, Sec-Fetch-Dest`.
+
+This breaks the canonical URL for ordinary visitors in two ways.
+
+**1. At runtime, behind a CDN (the production impact).** Vercel's CDN, like most,
+does not cache key on `Vary`. The first AI crawler to hit `/<route>/` causes the
+negotiated Markdown to be cached under the canonical URL. Every following human
+visitor is then served raw Markdown, which the browser renders as unstyled text
+in Quirks Mode with no CSS or JS. One crawler request poisons the page for
+everyone until the cache is purged.
+
+**2. At build time, during prerender.** If a prerender request is classified as
+Markdown preferring, Nitro writes the 307 meta refresh stub as the canonical
+`index.html`:
 
 ```html
 <!DOCTYPE html><html><head><meta http-equiv="refresh" content="0; url=/index.md"></head></html>
 ```
 
-Browsers receive `text/html` with no `<!DOCTYPE>` for this 95 byte body and
-render unstyled text in Quirks Mode with no JS or CSS.
-
-The markdown content negotiation runs on every page route. During prerender the
-crawler request is negotiated to markdown, the middleware 307 redirects the
-route to its `.md` twin, and Nitro stores that redirect body as `index.html`.
+Both effects share one root cause: Markdown is negotiated onto canonical URLs
+instead of being served only at the explicit `.md` URLs the module already emits.
 
 ## 🛠️ To reproduce
 
@@ -26,43 +37,39 @@ https://stackblitz.com/github/JonathanXDR/repro-nuxt-ai-ready-markdown-canonical
 
 ## 🌈 Expected behavior
 
-Prerendering a page route always writes the full HTML document. The Nitro
-prerender request carries only `x-nitro-prerender` and no `Accept`,
-`Sec-Fetch-Dest`, or User-Agent, so it should resolve to HTML and never replace
-the canonical artifact with a redirect stub or markdown.
+A canonical page route always resolves to the full HTML document, for every
+client, and Markdown is reachable only at the explicit `.md` URLs. Those URLs,
+the `<link rel="alternate">` tag, and llms.txt already give AI clients a stable,
+cache safe way to find the Markdown, so the canonical route never needs to be
+negotiated.
 
 ## ℹ️ Additional context
 
-The repo stamps an AI bot User-Agent on the prerender request to trigger the
-negotiation deterministically. Removing that plugin, or running
-`AI_READY_REPRO=document npm run generate`, restores the full HTML page, which
-confirms the negotiation gate is the cause.
-
 Root cause in 1.5.0:
 
-- `negotiateRepresentation()` returns `"markdown"` before it checks
-  `sec-fetch-dest`, so an AI bot UA or a markdown preferring Accept wins
-  (`dist/runtime/server/utils.js:49-60`).
-- The middleware then 307 redirects non `.md` routes to the `.md` twin
-  (`dist/runtime/server/middleware/markdown.js:74-75`).
-- That 307 body is `h3.sendRedirect`'s meta refresh page (`h3/dist/index.mjs:783`),
-  which Nitro's prerender writes straight to `index.html` without following it
-  (`nitropack@2.13.4`).
+- `negotiateRepresentation()` resolves to `"markdown"` for an AI bot User-Agent
+  or a Markdown preferring `Accept` (`dist/runtime/server/utils.js`).
+- The middleware then 307 redirects non `.md` routes to their `.md` twin
+  (`dist/runtime/server/middleware/markdown.js:73-74`).
+- At runtime that redirect is cached under the canonical URL by any CDN that
+  ignores `Vary`. During prerender its body is `h3.sendRedirect`'s meta refresh
+  page, which Nitro writes straight to `index.html` (`nitropack@2.13.4`).
 
-There is no option to disable HTML route negotiation, only `enabled`.
+There is no option to disable canonical route negotiation, only `enabled`.
 
-Suggested fix: skip negotiation for prerender requests by detecting the
-`x-nitro-prerender` header and returning `"html"`, and add a `ModuleOptions` opt
-out. A runtime aggravator: Vercel's CDN does not cache key on
-`Vary: Accept, Sec-Fetch-Dest`, so one AI crawler hit can cache the markdown
-variant under the canonical URL.
+Suggested fix: serve Markdown only at the explicit `.md` URLs and stop
+negotiating it onto canonical routes, or add a `ModuleOptions` flag to disable
+canonical negotiation. Content negotiation on a canonical URL cannot be made safe
+behind a CDN that ignores `Vary`, so a separate URL is the robust contract.
+Skipping negotiation for prerender requests alone (via `x-nitro-prerender`) fixes
+only effect 2 and leaves the runtime cache poisoning in place.
 
-To run in StackBlitz WebContainer (no native addons), the repo removes all
-native dependencies. It sets `aiReady.database.type` to `d1` to avoid native
+To run in StackBlitz WebContainer (no native addons), the repo removes all native
+dependencies. It sets `aiReady.database.type` to `d1` to avoid native
 `better-sqlite3`, and a Nitro build alias maps the native `mdream` engine to its
-pure JS twin `@mdream/js`. Neither touches the bug, which is in the markdown
+pure JS twin `@mdream/js`. Neither touches the bug, which is in the Markdown
 negotiation. The default `sqlite` driver and native `mdream` reproduce the
-identical stub.
+identical behavior.
 
 <details><summary><code>nuxi info</code> (reproduction)</summary>
 
