@@ -1,0 +1,4 @@
+{
+  "installDependencies": true,
+  "startCommand": "npm run repro && echo '^ canonical index.html is a 95-byte meta-refresh stub instead of the page (the bug). Inspect .output/public/index.html in the file tree.' && npx -y serve .output/public"
+}
