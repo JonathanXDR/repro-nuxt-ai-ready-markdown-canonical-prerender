@@ -6,9 +6,15 @@ Template: .github/ISSUE_TEMPLATE/02-bug-report.yml, label: bug
 ## 🐛 The bug
 
 On a prerendered Nuxt site, nuxt-ai-ready can overwrite a page's prerendered
-`<route>/index.html` with a meta refresh stub that points at the `.md` twin. The
-canonical file is no longer the page, so browsers receive `text/html` with no
-`<!DOCTYPE>` and render unstyled text in Quirks Mode with no JS or CSS.
+`<route>/index.html` with a meta refresh stub that points at the `.md` twin, so
+the canonical file is no longer the page:
+
+```html
+<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0; url=/index.md"></head></html>
+```
+
+Browsers receive `text/html` with no `<!DOCTYPE>` for this 95 byte body and
+render unstyled text in Quirks Mode with no JS or CSS.
 
 The markdown content negotiation runs on every page route. During prerender the
 crawler request is negotiated to markdown, the middleware 307 redirects the
@@ -20,7 +26,7 @@ needs neither i18n nor Vercel.
 
 ## 🛠️ To reproduce
 
-StackBlitz (one click, runs in the browser): https://stackblitz.com/github/JonathanXDR/repro-nuxt-ai-ready-markdown-canonical-prerender
+https://stackblitz.com/github/JonathanXDR/repro-nuxt-ai-ready-markdown-canonical-prerender
 
 Or locally:
 
@@ -30,17 +36,6 @@ npm run generate
 cat .output/public/index.html
 ```
 
-A 95 byte stub is produced instead of the page:
-
-```html
-<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0; url=/index.md"></head></html>
-```
-
-The repo stamps an AI bot User-Agent on the prerender request to trigger the
-negotiation deterministically. Removing that plugin, or running
-`AI_READY_REPRO=document npm run generate`, restores the full HTML page, which
-confirms the negotiation gate is the cause.
-
 ## 🌈 Expected behavior
 
 Prerendering a page route always writes the full HTML document. The Nitro
@@ -49,6 +44,11 @@ prerender request carries only `x-nitro-prerender` and no `Accept`,
 the canonical artifact with a redirect stub or markdown.
 
 ## ℹ️ Additional context
+
+The repo stamps an AI bot User-Agent on the prerender request to trigger the
+negotiation deterministically. Removing that plugin, or running
+`AI_READY_REPRO=document npm run generate`, restores the full HTML page, which
+confirms the negotiation gate is the cause.
 
 Root cause in 1.5.0:
 
@@ -71,18 +71,15 @@ variant under the canonical URL.
 
 To run in StackBlitz WebContainer (no native addons), the repo removes all
 native dependencies. It sets `aiReady.database.type` to `d1` to avoid native
-`better-sqlite3`, and a Nitro build alias maps the native `mdream` engine
-to its pure JS twin `@mdream/js`. Neither touches the bug, which is in the
-markdown negotiation. The default `sqlite` driver and native `mdream` reproduce
-the identical stub.
-
-Not duplicates: #22 (inverse, markdown not served), #14 (`.md` 404), and
-harlan-zw/mdream#40 (runtime negotiation only).
+`better-sqlite3`, and a Nitro build alias maps the native `mdream` engine to its
+pure JS twin `@mdream/js`. Neither touches the bug, which is in the markdown
+negotiation. The default `sqlite` driver and native `mdream` reproduce the
+identical stub.
 
 <details><summary><code>nuxi info</code> (reproduction)</summary>
 
-|                      |                                                   |
-| -------------------- | ------------------------------------------------- |
+|                      |                                                            |
+| -------------------- | ---------------------------------------------------------- |
 | **Operating system** | `macOS 25.5.0`                                             |
 | **CPU**              | `Apple M4 Pro (14 cores)`                                  |
 | **Node.js version**  | `v24.18.0`                                                 |
